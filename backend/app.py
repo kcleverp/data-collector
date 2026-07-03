@@ -21,6 +21,8 @@ logging.basicConfig(level=logging.INFO,
 
 # data 폴더는 런타임에 생성된다(.gitignore 로 저장소에서는 제외). 서버 시작 시 보장.
 os.makedirs(config.DATA_DIR, exist_ok=True)
+# 예전 num 폴더(84/87/F5)를 소스 이름 폴더로 이관.
+storage.migrate_legacy_dirs()
 
 app = FastAPI(title="EX 데이터 수집기")
 

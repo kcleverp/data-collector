@@ -1,18 +1,42 @@
 """CSV 저장 · 파일 개수 집계 · 재개(이미 받은 파일 건너뛰기).
 
-저장 위치:  backend/data/{num}/{num}_{YYYY-MM-DD}.csv
+저장 위치:  backend/data/{소스이름}/{num}_{YYYY-MM-DD}.csv
 """
 
 import os
 import glob
+import shutil
 
 import config
 
 
 def source_dir(num):
-    d = os.path.join(config.DATA_DIR, num)
+    """소스 저장 폴더(= 소스 이름). 없으면 생성."""
+    d = os.path.join(config.DATA_DIR, config.source_dir_name(num))
     os.makedirs(d, exist_ok=True)
     return d
+
+
+def migrate_legacy_dirs():
+    """예전 num 폴더(data/84 등)를 소스 이름 폴더로 이관한다.
+
+    이미 받아둔 파일이 새 폴더 구조로 옮겨지도록 서버 시작 시 1회 실행.
+    """
+    for s in config.SOURCES:
+        old = os.path.join(config.DATA_DIR, s["num"])
+        new = os.path.join(config.DATA_DIR, config.source_dir_name(s["num"]))
+        if not os.path.isdir(old) or os.path.abspath(old) == os.path.abspath(new):
+            continue
+        os.makedirs(new, exist_ok=True)
+        for fn in os.listdir(old):
+            dst = os.path.join(new, fn)
+            if not os.path.exists(dst):
+                shutil.move(os.path.join(old, fn), dst)
+        try:
+            if not os.listdir(old):
+                os.rmdir(old)
+        except OSError:
+            pass
 
 
 def _fmt_date(yyyymmdd):

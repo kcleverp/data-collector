@@ -1,6 +1,7 @@
 """백엔드 설정 — 수집 대상 데이터 소스와 경로 정의."""
 
 import os
+import re
 
 # ── 수집 대상 데이터 소스 ─────────────────────────────────────
 # 세 소스는 페이지 구조가 동일하고 아래 값만 다르다(역분석으로 확인).
@@ -157,3 +158,14 @@ def source_by_num(num):
         if s["num"] == num:
             return s
     return None
+
+
+def source_dir_name(num):
+    """소스의 저장 폴더 이름 = 소스 이름(파일시스템 금지문자/공백만 정리).
+
+    예) 84 → 'VDS_교통량·속도·지정체'
+    """
+    s = source_by_num(num)
+    name = s["name"] if s else num
+    safe = re.sub(r'[\\/:*?"<>|]+', "_", name)   # 윈도우 금지문자 제거
+    return safe.replace(" ", "_").strip("_")
