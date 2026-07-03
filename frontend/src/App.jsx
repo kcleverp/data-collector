@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
-  getSources, getCounts, getSurveyOptions, getInfo,
-  startDownload, getJob, cancelJob, mergeSource,
+  getSources, getSurveyOptions, getInfo,
+  startDownload, getJob, cancelJob,
 } from './api.js'
 import SourceCard from './components/SourceCard.jsx'
 import SurveyForm from './components/SurveyForm.jsx'
@@ -16,8 +16,6 @@ export default function App() {
   const [info, setInfo] = useState(null)        // { dataDir }
   const [job, setJob] = useState(null)
   const [jobId, setJobId] = useState(null)
-  const [merging, setMerging] = useState({})    // num -> bool
-  const [mergeResult, setMergeResult] = useState({})
   const [err, setErr] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -60,8 +58,8 @@ export default function App() {
 
   const refreshCounts = async () => {
     try {
-      const counts = await getCounts()
-      setSources((prev) => prev.map((s) => ({ ...s, fileCount: counts[s.num] ?? s.fileCount })))
+      const list = await getSources()   // dayCount + 통합본 정보 갱신
+      setSources(list)
     } catch {}
   }
 
@@ -103,20 +101,6 @@ export default function App() {
 
   const onCancel = () => jobId && cancelJob(jobId).catch(() => {})
 
-  const onMerge = async (num) => {
-    setErr(null)
-    setMerging((m) => ({ ...m, [num]: true }))
-    try {
-      const res = await mergeSource(num)
-      setMergeResult((m) => ({ ...m, [num]: res }))
-      setSources(await getSources())   // merged 정보/개수 갱신
-    } catch (e) {
-      setErr('통합 실패: ' + e.message)
-    } finally {
-      setMerging((m) => ({ ...m, [num]: false }))
-    }
-  }
-
   const overall = job?.overall
   const statusText = !job
     ? ''
@@ -139,8 +123,7 @@ export default function App() {
         <ol className="steps">
           <li><b>①</b> 소스·기간 선택</li>
           <li><b>②</b> 신청자 정보</li>
-          <li><b>③</b> 수집 시작</li>
-          <li><b>④</b> 하나로 통합</li>
+          <li><b>③</b> 수집 시작 (소스별 1파일로 자동 통합)</li>
         </ol>
 
         {err && <div className="alert">{err}</div>}
@@ -203,16 +186,12 @@ export default function App() {
 
         <section className="panel">
           <h2 className="panel__title">저장 현황</h2>
-          <StatusPanel
-            sources={sources}
-            job={job}
-            onMerge={onMerge}
-            merging={merging}
-            mergeResult={mergeResult}
-          />
+          <StatusPanel sources={sources} job={job} />
           <p className="muted small">
+            받는 즉시 <b>소스별 하나의 통합 CSV</b>에 이어붙여 저장됩니다. 이미 받은 날짜는 자동 건너뜀.
+            <br />
             저장 위치: <code>{info?.dataDir || 'backend/data'}</code>
-            {'  '}· 파일명 <code>&lt;소스&gt;_&lt;날짜&gt;.csv</code> · 통합본 <code>_merged/&lt;소스&gt;_통합.csv</code>
+            {'  '}· 파일 <code>&lt;소스이름&gt;/&lt;소스&gt;_통합.csv</code>
           </p>
         </section>
       </main>

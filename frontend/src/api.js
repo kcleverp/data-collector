@@ -28,6 +28,3 @@ export const getJob = (id) => fetch(`/api/jobs/${id}`).then(json)
 
 export const cancelJob = (id) =>
   fetch(`/api/jobs/${id}/cancel`, { method: 'POST' }).then(json)
-
-export const mergeSource = (num) =>
-  fetch(`/api/merge/${num}`, { method: 'POST' }).then(json)
