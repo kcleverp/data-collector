@@ -13,14 +13,21 @@ export const getSources = () => fetch('/api/sources').then(json)
 
 export const getCounts = () => fetch('/api/counts').then(json)
 
-export const startDownload = (selections) =>
+export const getSurveyOptions = () => fetch('/api/survey-options').then(json)
+
+export const getInfo = () => fetch('/api/info').then(json)
+
+export const startDownload = (selections, survey) =>
   fetch('/api/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ selections }),
+    body: JSON.stringify({ selections, survey }),
   }).then(json)
 
 export const getJob = (id) => fetch(`/api/jobs/${id}`).then(json)
 
 export const cancelJob = (id) =>
   fetch(`/api/jobs/${id}/cancel`, { method: 'POST' }).then(json)
+
+export const mergeSource = (num) =>
+  fetch(`/api/merge/${num}`, { method: 'POST' }).then(json)
