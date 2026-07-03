@@ -21,8 +21,9 @@ logging.basicConfig(level=logging.INFO,
 
 # data 폴더는 런타임에 생성된다(.gitignore 로 저장소에서는 제외). 서버 시작 시 보장.
 os.makedirs(config.DATA_DIR, exist_ok=True)
-# 예전 num 폴더(84/87/F5)를 소스 이름 폴더로 이관.
+# 예전 num 폴더(84/87/F5)를 소스 이름 폴더로 이관 후, 일자별 파일을 통합본으로 단일화.
 storage.migrate_legacy_dirs()
+storage.migrate_to_single_file()
 
 app = FastAPI(title="EX 데이터 수집기")
 
@@ -65,7 +66,7 @@ def _fmt(d):
 # ── API ───────────────────────────────────────────────────────
 @app.get("/api/sources")
 def get_sources():
-    """소스 목록 + 사용 가능 날짜 범위 + 저장된 파일 개수."""
+    """소스 목록 + 사용 가능 날짜 범위 + 통합본에 담긴 일수."""
     result = []
     for s in config.SOURCES:
         rng = _date_range(s)
@@ -75,15 +76,15 @@ def get_sources():
             "minDate": rng["minDate"],
             "maxDate": rng["maxDate"],
             "availableCount": rng["availableCount"],
-            "fileCount": storage.file_count(s["num"]),
-            "merged": storage.merged_info(s["num"]),
+            "dayCount": storage.day_count(s["num"]),
+            "file": storage.consolidated_info(s["num"]),
         })
     return result
 
 
 @app.get("/api/counts")
 def get_counts():
-    """소스별 저장 파일 개수(가벼운 새로고침용)."""
+    """소스별 담긴 일수(가벼운 새로고침용)."""
     return storage.all_counts()
 
 
@@ -140,17 +141,6 @@ def cancel_job(job_id: str):
         raise HTTPException(404, "작업을 찾을 수 없습니다.")
     job.cancel()
     return {"ok": True}
-
-
-@app.post("/api/merge/{num}")
-def merge_source(num: str):
-    """해당 소스의 일자별 CSV를 하나로 통합한다. (data/_merged/{num}_통합.csv)"""
-    if config.source_by_num(num) is None:
-        raise HTTPException(404, "알 수 없는 소스입니다.")
-    result = storage.merge_source(num)
-    if result["files"] == 0:
-        raise HTTPException(400, "통합할 파일이 없습니다.")
-    return result
 
 
 # ── 빌드된 프론트엔드 서빙 (있을 때만) ────────────────────────

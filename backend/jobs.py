@@ -125,7 +125,7 @@ class Job:
                         with self.lock:
                             st["skipped"] += 1
                     else:
-                        storage.save_csv(num, d, data)
+                        storage.append_csv(num, d, data)   # 통합본에 이어붙이기
                         with self.lock:
                             st["saved"] += 1
             except Exception as e:
