@@ -19,6 +19,9 @@ from jobs import manager
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(message)s")
 
+# data 폴더는 런타임에 생성된다(.gitignore 로 저장소에서는 제외). 서버 시작 시 보장.
+os.makedirs(config.DATA_DIR, exist_ok=True)
+
 app = FastAPI(title="EX 데이터 수집기")
 
 # 개발 시 Vite dev 서버(5173)에서의 접근 허용
@@ -71,6 +74,7 @@ def get_sources():
             "maxDate": rng["maxDate"],
             "availableCount": rng["availableCount"],
             "fileCount": storage.file_count(s["num"]),
+            "merged": storage.merged_info(s["num"]),
         })
     return result
 
@@ -81,6 +85,18 @@ def get_counts():
     return storage.all_counts()
 
 
+@app.get("/api/survey-options")
+def get_survey_options():
+    """다운로드 신청자 설문 항목/선택지(사이트 원본 폼)."""
+    return config.SURVEY_FIELDS
+
+
+@app.get("/api/info")
+def get_info():
+    """저장 경로 등 서버 정보."""
+    return {"dataDir": os.path.abspath(config.DATA_DIR)}
+
+
 class Selection(BaseModel):
     num: str
     start: str   # 'YYYY-MM-DD'
@@ -89,6 +105,7 @@ class Selection(BaseModel):
 
 class DownloadRequest(BaseModel):
     selections: list[Selection]
+    survey: dict[str, str]   # {key: code} 신청자 정보(받는 주체)
 
 
 @app.post("/api/download")
@@ -97,7 +114,12 @@ def start_download(req: DownloadRequest):
     selections = [s.model_dump() for s in req.selections if s.start and s.end]
     if not selections:
         raise HTTPException(400, "선택된 소스가 없습니다.")
-    job = manager.start(selections)
+    # 신청자 설문 필수 검증(사이트가 요구) — 하나라도 비면 400
+    try:
+        config.build_survey_params(req.survey)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    job = manager.start(selections, req.survey)
     return {"jobId": job.id}
 
 
@@ -116,6 +138,17 @@ def cancel_job(job_id: str):
         raise HTTPException(404, "작업을 찾을 수 없습니다.")
     job.cancel()
     return {"ok": True}
+
+
+@app.post("/api/merge/{num}")
+def merge_source(num: str):
+    """해당 소스의 일자별 CSV를 하나로 통합한다. (data/_merged/{num}_통합.csv)"""
+    if config.source_by_num(num) is None:
+        raise HTTPException(404, "알 수 없는 소스입니다.")
+    result = storage.merge_source(num)
+    if result["files"] == 0:
+        raise HTTPException(400, "통합할 파일이 없습니다.")
+    return result
 
 
 # ── 빌드된 프론트엔드 서빙 (있을 때만) ────────────────────────
