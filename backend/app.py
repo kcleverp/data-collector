@@ -35,6 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def no_cache_html(request, call_next):
+    """index.html 캐시로 구버전 JS가 남는 문제 방지."""
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith(".html"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 # 소스별 사용 가능 날짜 범위 캐시 (최초 1회 조회)
 _date_range_cache = {}
 

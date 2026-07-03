@@ -32,25 +32,63 @@ ex_collector/
    └─ dist/                빌드 결과 (백엔드가 이 폴더를 서빙)
 ```
 
-## 실행 방법 (가장 간단)
+## 실행 방법
 
-프론트엔드는 이미 빌드되어 있어 **백엔드만 켜면** 됩니다.
+**필요:** Python 3, Node.js(npm) · 인터넷 연결(data.ex.co.kr 접근)
+
+> `frontend/dist/` 와 `backend/.venv/` 는 `.gitignore` 대상이라 **GitHub에는 포함되지 않습니다.**  
+> 저장소를 새로 clone 한 뒤에는 아래 **초기 설정(1회)** 을 거친 다음 서버를 실행하세요.
+
+### 초기 설정 (최초 1회)
+
+```bash
+# 저장소 받기
+git clone https://github.com/kcleverp/data-collector.git
+cd data-collector
+
+# 백엔드
+cd backend
+python -m venv .venv
+.venv\Scripts\activate            # PowerShell: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# 프론트 빌드 (8000 포트 UI에 필수)
+cd ..\frontend
+npm install
+npm run build
+```
+
+### 서버 실행
 
 ```bash
 cd backend
-.venv\Scripts\activate            # (PowerShell: .venv\Scripts\Activate.ps1)
+.venv\Scripts\activate
 python app.py
 ```
 
-그 다음 브라우저에서 **http://127.0.0.1:8000** 접속.
+브라우저에서 **http://127.0.0.1:8000** 접속.
 
-> 가상환경을 처음부터 만들려면:
-> ```bash
-> cd backend
-> python -m venv .venv
-> .venv\Scripts\activate
-> pip install -r requirements.txt
-> ```
+- 화면에 **「신청자 정보 (받는 주체)」** 5개 선택란이 보이면 정상입니다.
+- UI가 예전 버전처럼 보이면 **Ctrl+Shift+R**(강력 새로고침) 하세요.
+- 프론트 소스를 수정했다면 `npm run build` 후 서버를 재시작하세요.
+
+### 프론트엔드 개발 모드 (선택)
+
+UI를 수정·확인할 때는 빌드 없이 dev 서버를 쓸 수 있습니다. **백엔드(8000)도 함께 켜야** 합니다.
+
+```bash
+# 터미널 1 — backend
+cd backend
+.venv\Scripts\activate
+python app.py
+
+# 터미널 2 — frontend
+cd frontend
+npm install          # 최초 1회
+npm run dev          # http://localhost:5173 (/api 는 8000으로 프록시)
+```
+
+배포(8000) 반영: `npm run build` → `backend/app.py`가 새 `frontend/dist/`를 서빙.
 
 ## 사용 흐름
 
@@ -64,18 +102,6 @@ python app.py
 - `data/` 폴더는 **실행 시 자동 생성**되며 `.gitignore`로 저장소에서는 제외됩니다.
   (예전 `84/87/F5` 폴더나 일자별 파일이 있으면 서버 시작 시 소스 이름 폴더의 **통합본으로 자동 합쳐집니다**.)
 - 이미 받은 날짜·데이터 없는 날짜는 자동으로 **건너뜁니다**(재개 지원).
-
-## 프론트엔드 개발 모드 (선택)
-
-UI를 수정하려면:
-
-```bash
-cd frontend
-npm install          # 최초 1회
-npm run dev          # http://localhost:5173 (/api 는 8000으로 프록시)
-```
-
-수정 후 반영: `npm run build` → `backend/app.py`가 새 `dist/`를 서빙.
 
 ## 데이터 구조 및 입도
 
