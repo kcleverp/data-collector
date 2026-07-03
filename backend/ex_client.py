@@ -7,8 +7,8 @@
   4) /portal/fdwn/log              → 파일 다운로드(내용은 .zip 이름이지만 실제로는 gzip)
   5) gzip 해제 → CSV(cp949) 바이트
 
-설문 5개(소속/지역/성별/나이/활용목적)는 필수지만 데이터에 영향이 없어
-아무 유효값이나 넣는다.
+설문 5개(소속/지역/성별/나이/활용목적)는 필수 항목이며, '이 데이터를 받는 주체'로
+서버에 기록된다. 사용자가 프론트에서 입력한 값을 그대로 실어 보낸다.
 """
 
 import gzip
@@ -19,14 +19,6 @@ import requests
 import config
 
 log = logging.getLogger(__name__)
-
-# 다운로드 설문 — 값 자체는 로그용일 뿐 데이터에 영향 없음
-_SURVEY = {
-    "deptCd": "1", "regionCd": "KR-11", "genderCd": "0",
-    "userAgeCd": "20", "pouCd": "0",
-    "deptName": "-", "regionName": "-", "gender": "-",
-    "userAgeName": "-", "pouName": "-", "emailAddress": "-",
-}
 
 
 class ExClient:
@@ -90,8 +82,12 @@ class ExClient:
             return None
         return rows[0].get("outFileName")
 
-    def download_csv(self, source, yyyymmdd):
-        """해당 날짜의 CSV 바이트(cp949)를 반환. 파일이 없으면 None."""
+    def download_csv(self, source, yyyymmdd, survey):
+        """해당 날짜의 CSV 바이트(cp949)를 반환. 파일이 없으면 None.
+
+        survey: {key: code} 형태의 신청자 정보(소속/지역/성별/나이/활용목적).
+                서버에 '받는 주체'로 기록된다.
+        """
         out_file_name = self.search(source, yyyymmdd)
         if not out_file_name:
             return None
@@ -100,7 +96,7 @@ class ExClient:
         params["dataSupplyDate"] = yyyymmdd
         params["outFileName"] = out_file_name
         params["serviceId"] = source["serviceId"]
-        params.update(_SURVEY)
+        params.update(config.build_survey_params(survey))
 
         self.session.headers["Referer"] = source["url"]
         r = self.session.post(config.BASE_URL + "/portal/fdwn/log",

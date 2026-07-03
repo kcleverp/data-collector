@@ -18,10 +18,12 @@ def _to_yyyymmdd(s):
 
 
 class Job:
-    def __init__(self, selections):
+    def __init__(self, selections, survey):
         # selections: [{"num": "84", "start": "2024-01-01", "end": "2024-03-31"}, ...]
+        # survey: {key: code} 신청자 정보(받는 주체) — 모든 소스에 공통 적용
         self.id = uuid.uuid4().hex[:12]
         self.selections = selections
+        self.survey = survey
         self.status = "running"          # running | done | cancelled | error
         self.error = None
         self.lock = threading.Lock()
@@ -49,6 +51,7 @@ class Job:
                 "id": self.id,
                 "status": self.status,
                 "error": self.error,
+                "recipient": config.survey_label(self.survey),
                 "overall": {
                     "total": total,
                     "done": done,
@@ -117,7 +120,7 @@ class Job:
                     with self.lock:
                         st["skipped"] += 1
                 else:
-                    data = client.download_csv(source, d)
+                    data = client.download_csv(source, d, self.survey)
                     if data is None:                 # 해당 날짜 파일 없음
                         with self.lock:
                             st["skipped"] += 1
@@ -143,8 +146,8 @@ class JobManager:
         self._jobs = {}
         self._lock = threading.Lock()
 
-    def start(self, selections):
-        job = Job(selections)
+    def start(self, selections, survey):
+        job = Job(selections, survey)
         with self._lock:
             self._jobs[job.id] = job
         threading.Thread(target=job.run, daemon=True).start()
